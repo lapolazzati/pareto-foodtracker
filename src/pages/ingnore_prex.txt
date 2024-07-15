@@ -1,13 +1,11 @@
-'use client';
-
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '../lib/supabaseClient' // Remove the file extension
-import EatingHabitsCalendar from '../components/gh_consistency_bar'
-import ProgressBar from '../components/progress_bar'
-import MealForm from '../components/meal_form'
-import DrinkForm from '../components/drink_form'
-import SweetForm from '../components/sweet_form'
+import { useRouter } from 'next/router'
+import { supabase } from '../../lib/supabaseClient.js'
+import EatingHabitsCalendar from '../../components/gh_consistency_bar.js'
+import ProgressBar from '../components/ProgressBar'
+import MealForm from '../components/MealForm'
+import DrinkForm from '../components/DrinkForm'
+import SweetForm from '../components/SweetForm'
 
 export default function Home() {
   const [session, setSession] = useState(null)
@@ -19,12 +17,12 @@ export default function Home() {
   const [weeklyDrinkLimit, setWeeklyDrinkLimit] = useState(0)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       if (session) fetchData(session.user.id)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => { // Specify types for event and session
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       if (session) fetchData(session.user.id)
     })

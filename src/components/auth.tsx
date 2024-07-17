@@ -1,27 +1,18 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabaseClient'
-import { useRouter } from 'next/router'
+'use client';
+
+import { useState } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useRouter } from 'next/navigation'
 
 export default function Auth() {
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
   const router = useRouter()
+  const supabase = createClientComponentClient()
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
-        router.push('/')
-      } else {
-        setLoading(false)
-      }
-    }
-    checkSession()
-  }, [router])
-
-  const handleSignUp = async (e) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage('')
@@ -37,7 +28,7 @@ export default function Auth() {
     }
   }
 
-  const handleSignIn = async (e) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage('')
@@ -48,16 +39,13 @@ export default function Auth() {
       router.push('/')
     } catch (error) {
       setMessage(error.message)
+    } finally {
       setLoading(false)
     }
   }
 
-  if (loading) {
-    return <div>Loading...</div>
-  }
-
-
   return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <main className="flex flex-col items-center justify-center w-full flex-1 px-20 text-center">
         {message && (

@@ -1,132 +1,49 @@
 'use client';
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { supabase } from '../lib/supabaseClient' // Remove the file extension
-import EatingHabitsCalendar from '../components/gh_consistency_bar'
-import ProgressBar from '../components/progress_bar'
-import MealForm from '../components/meal_form'
-import DrinkForm from '../components/drink_form'
-import SweetForm from '../components/sweet_form'
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Session } from '@supabase/supabase-js'
+import Dashboard from '@/components/dash';
+import Auth from '@/components/auth';  // Make sure this path is correct
 
 export default function Home() {
-  const [session, setSession] = useState(null)
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
-  const [eatingHabits, setEatingHabits] = useState({})
-  const [sweetsConsumed, setSweetsConsumed] = useState(0)
-  const [sweetsLimit, setSweetsLimit] = useState(0)
-  const [weeklyDrinks, setWeeklyDrinks] = useState(0)
-  const [weeklyDrinkLimit, setWeeklyDrinkLimit] = useState(0)
+  const supabase = createClientComponentClient()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
-      setSession(session)
-      if (session) fetchData(session.user.id)
-    })
+    const fetchSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        console.log("Fetched session:", session)
+        setSession(session)
+      } catch (error) {
+        console.error("Error fetching session:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => { // Specify types for event and session
+    fetchSession()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Auth state changed:", _event, session)
       setSession(session)
-      if (session) fetchData(session.user.id)
+      setLoading(false)
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [supabase])
 
-  useEffect(() => {
-    if (!session) {
-      router.push('/auth')
-    }
-  }, [session, router])
-
-  const fetchData = async (userId) => {
-    const today = new Date().toISOString().split('T')[0];
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  
-    // Fetch meals, drinks, sweets, and user data
-    const [mealsResponse, drinksResponse, sweetsResponse, userDataResponse] = await Promise.all([
-      supabase.from('meals').select('date, indulged').gte('date', thirtyDaysAgo).lte('date', today).eq('user_id', userId),
-      supabase.from('drinks').select('date, drink_type').gte('date', thirtyDaysAgo).lte('date', today).eq('user_id', userId),
-      supabase.from('sweets').select('date').gte('date', thirtyDaysAgo).lte('date', today).eq('user_id', userId),
-      supabase.from('users').select('sweets_limit, weekly_drink_limit').eq('id', userId).single()
-    ]);
-
-    const { data: meals, error: mealsError } = mealsResponse;
-    const { data: drinks, error: drinksError } = drinksResponse;
-    const { data: sweets, error: sweetsError } = sweetsResponse;
-    const { data: userData, error: userError } = userDataResponse;
-
-    if (mealsError) console.error('Error fetching meals:', mealsError);
-    if (drinksError) console.error('Error fetching drinks:', drinksError);
-    if (sweetsError) console.error('Error fetching sweets:', sweetsError);
-    if (userError) console.error('Error fetching user data:', userError);
-
-    setSweetsLimit(userData?.sweets_limit || 0);
-    setWeeklyDrinkLimit(userData?.weekly_drink_limit || 0);
-  
-    // Process data for EatingHabitsCalendar
-    const habits = {};
-    meals?.forEach(meal => {
-      habits[meal.date] = habits[meal.date] || { meals: 0, indulgences: 0, drinks: 0, sweets: 0 };
-      habits[meal.date].meals++;
-      if (meal.indulged) habits[meal.date].indulgences++;
-    });
-  
-    drinks?.forEach(drink => {
-      habits[drink.date] = habits[drink.date] || { meals: 0, indulgences: 0, drinks: 0, sweets: 0 };
-      habits[drink.date].drinks++;
-    });
-  
-    sweets?.forEach(sweet => {
-      habits[sweet.date] = habits[sweet.date] || { meals: 0, indulgences: 0, drinks: 0, sweets: 0 };
-      habits[sweet.date].sweets++;
-    });
-  
-    setEatingHabits(habits);
-  
-    // Calculate sweets consumed today
-    setSweetsConsumed(habits[today]?.sweets || 0);
-  
-    // Calculate weekly drinks
-    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-    const weeklyDrinksCount = drinks?.filter(drink => drink.date >= oneWeekAgo).length || 0;
-    setWeeklyDrinks(weeklyDrinksCount);
-  };
-
-  const handleDataAdded = () => {
-    if (session) fetchData(session.user.id)
-  }
-
-  const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) console.log('Error signing out:', error.message)
-    else router.push('/auth')
+  if (loading) {
+    return <div>Loading...</div>
   }
 
   if (!session) {
-    return null // or a loading indicator
+    return <Auth />  // We're now rendering the Auth component instead of redirecting
   }
 
-  return (
-    <div className="min-h-screen bg-gray-100 py-6 flex flex-col justify-center sm:py-12">
-      <div className="relative py-3 sm:max-w-xl sm:mx-auto">
-        <div className="relative px-4 py-10 bg-white shadow-lg sm:rounded-3xl sm:p-20">
-          <div className="max-w-md mx-auto">
-            <EatingHabitsCalendar data={eatingHabits} />
-            <div className="mt-4">
-              <h3 className="text-lg font-medium">Sweets Consumed Today</h3>
-              <ProgressBar current={sweetsConsumed} limit={sweetsLimit} />
-            </div>
-            <div className="mt-4">
-              <h3 className="text-lg font-medium">Weekly Drinks</h3>
-              <ProgressBar current={weeklyDrinks} limit={weeklyDrinkLimit} />
-            </div>
-            <MealForm userId={session.user.id} onMealAdded={handleDataAdded} />
-            <DrinkForm userId={session.user.id} onDrinkAdded={handleDataAdded} />
-            <SweetForm userId={session.user.id} onSweetAdded={handleDataAdded} />
-            <button onClick={handleSignOut} className="mt-4 bg-red-500 text-white p-2 rounded">Sign Out</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
+  return <Dashboard session={session} />
 }

@@ -28,7 +28,7 @@ export default function MealForm({ userId, onMealAdded }) {
         .from('meals')
         .insert({
             ...mealData,
-            user_id: userId,
+            user_auth_id: userId,
             date: new Date().toISOString().split('T')[0],
             time: new Date().toTimeString().split(' ')[0],
             has_picture: !!mealData.picture_id,

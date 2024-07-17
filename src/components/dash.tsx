@@ -34,16 +34,16 @@ export default function Dashboard({ session }: { session: Session }) {
     }
   }, [session])
 
-  const fetchData = async (userId: string) => {
+  const fetchData = async (authUserId: string) => {
     const today = new Date().toISOString().split('T')[0];
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
   
     // Fetch meals, drinks, sweets, and user data
     const [mealsResponse, drinksResponse, sweetsResponse, userDataResponse] = await Promise.all([
-      supabase.from('meals').select('date, indulged').gte('date', thirtyDaysAgo).lte('date', today).eq('user_id', userId),
-      supabase.from('drinks').select('date, drink_type').gte('date', thirtyDaysAgo).lte('date', today).eq('user_id', userId),
-      supabase.from('sweets').select('date').gte('date', thirtyDaysAgo).lte('date', today).eq('user_id', userId),
-      supabase.from('users').select('sweets_limit, weekly_drink_limit').eq('id', userId).single()
+      supabase.from('meals').select('date, indulged').gte('date', thirtyDaysAgo).lte('date', today).eq('user_auth_id', authUserId),
+      supabase.from('drinks').select('date, drink_type').gte('date', thirtyDaysAgo).lte('date', today).eq('user_auth_id', authUserId),
+      supabase.from('sweets').select('date').gte('date', thirtyDaysAgo).lte('date', today).eq('user_auth_id', authUserId),
+      supabase.from('users').select('sweets_limit, weekly_drink_limit').eq('auth_id', authUserId).single()
     ]);
 
     const { data: meals, error: mealsError } = mealsResponse;
@@ -56,8 +56,8 @@ export default function Dashboard({ session }: { session: Session }) {
     if (sweetsError) console.error('Error fetching sweets:', sweetsError);
     if (userError) console.error('Error fetching user data:', userError);
 
-    setSweetsLimit(userData?.sweets_limit || 0);
-    setWeeklyDrinkLimit(userData?.weekly_drink_limit || 0);
+    setSweetsLimit(userData?.sweets_limit || 5);
+    setWeeklyDrinkLimit(userData?.weekly_drink_limit || 5);
   
     // Process data for EatingHabitsCalendar
     const habits: EatingHabits = {};
@@ -83,7 +83,7 @@ export default function Dashboard({ session }: { session: Session }) {
       .select('date, is_indulgence')
       .gte('date', thirtyDaysAgo)
       .lte('date', today)
-      .eq('user_id', userId)
+      .eq('auth_id', authUserId)
 
     if (simpleMealsError) console.error('Error fetching simple meals:', simpleMealsError)
 
@@ -108,7 +108,7 @@ export default function Dashboard({ session }: { session: Session }) {
   const handleMealAdded = async (isIndulgence: boolean) => {
     if (session?.user) {
       const { error } = await supabase.from('simple_meals').insert({
-        user_id: session.user.id,
+        user_auth_id: session.user.id,
         date: new Date().toISOString().split('T')[0],
         is_indulgence: isIndulgence
       })
@@ -120,7 +120,7 @@ export default function Dashboard({ session }: { session: Session }) {
   const handleDrinkAdded = async () => {
     if (session?.user) {
       const { error } = await supabase.from('drinks').insert({
-        user_id: session.user.id,
+        user_auth_id: session.user.id,
         date: new Date().toISOString().split('T')[0]
       })
       if (error) console.error('Error adding drink:', error)
@@ -131,7 +131,7 @@ export default function Dashboard({ session }: { session: Session }) {
   const handleSweetAdded = async () => {
     if (session?.user) {
       const { error } = await supabase.from('sweets').insert({
-        user_id: session.user.id,
+        user_auth_id: session.user.id,
         date: new Date().toISOString().split('T')[0]
       })
       if (error) console.error('Error adding sweet:', error)
@@ -146,39 +146,45 @@ export default function Dashboard({ session }: { session: Session }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Dashboard</h1>
-      
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Progress</h2>
-        <div className="space-y-4">
-          <div>
-            <h3>Sweets Consumed Today</h3>
-            <ProgressBar current={sweetsConsumed} limit={sweetsLimit} />
-          </div>
-          <div>
-            <h3>Weekly Drinks</h3>
-            <ProgressBar current={weeklyDrinks} limit={weeklyDrinkLimit} />
+    <div className="dashboard-container">
+      <div className="dashboard-content">
+        <h1 className="dashboard-title">Your Nutrition Dashboard</h1>
+
+        <div className="mb-8">
+          <h2 className="section-title">Eating Habits Calendar</h2>
+          <EatingHabitsCalendar data={eatingHabits} />
+        </div>
+        
+        <div className="mb-8">
+          <h2 className="section-title">Progress</h2>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg mb-2">Sweets Consumed Today</h3>
+              <ProgressBar current={sweetsConsumed} limit={sweetsLimit} />
+            </div>
+            <div>
+              <h3 className="text-lg mb-2">Weekly Drinks</h3>
+              <ProgressBar current={weeklyDrinks} limit={weeklyDrinkLimit} />
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Quick Add</h2>
-        <div className="flex space-x-4">
-          <button onClick={() => handleMealAdded(false)} className="bg-green-500 text-white px-4 py-2 rounded">Add Meal</button>
-          <button onClick={() => handleMealAdded(true)} className="bg-orange-500 text-white px-4 py-2 rounded">Add Indulgence</button>
-          <button onClick={handleDrinkAdded} className="bg-blue-500 text-white px-4 py-2 rounded">Add Drink</button>
-          <button onClick={handleSweetAdded} className="bg-yellow-500 text-white px-4 py-2 rounded">Add Sweet</button>
+        <div className="mb-8">
+          <h2 className="section-title">Quick Add</h2>
+          <div className="flex flex-wrap justify-center gap-4">
+            <button onClick={() => handleMealAdded(false)} className="button button-meal">Add Meal</button>
+            <button onClick={() => handleMealAdded(true)} className="button button-indulgence">Add Indulgence</button>
+            <button onClick={handleDrinkAdded} className="button button-drink">Add Drink</button>
+            <button onClick={handleSweetAdded} className="button button-sweet">Add Sweet</button>
+          </div>
+        </div>
+
+
+
+        <div className="text-center">
+          <button onClick={handleSignOut} className="button button-signout">Sign Out</button>
         </div>
       </div>
-
-      <div className="mb-8">
-        <h2 className="text-xl font-semibold mb-2">Eating Habits Calendar</h2>
-        <EatingHabitsCalendar data={eatingHabits} />
-      </div>
-
-      <button onClick={handleSignOut} className="bg-red-500 text-white px-4 py-2 rounded">Sign Out</button>
     </div>
   )
 }

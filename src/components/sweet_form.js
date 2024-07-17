@@ -18,7 +18,7 @@ export default function SweetForm({ userId, onSweetAdded }) {
       .from('sweets')
       .insert({
         ...sweetData,
-        user_id: userId,
+        user_auth_id: userId,
         date: new Date().toISOString().split('T')[0],
       });
 

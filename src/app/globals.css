@@ -3,27 +3,15 @@
 @import 'tailwindcss/utilities';
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+  --foreground-rgb: 51, 51, 51;
+  --background-rgb: 248, 250, 252;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background: rgb(var(--background-rgb));
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
 }
 
 @layer utilities {
@@ -32,8 +20,6 @@ body {
   }
 }
 
-html,
-
 a {
   color: inherit;
   text-decoration: none;
@@ -41,4 +27,45 @@ a {
 
 * {
   box-sizing: border-box;
+}
+
+/* Custom styles for the dashboard */
+.dashboard-container {
+  @apply min-h-screen bg-gray-100 flex items-center justify-center p-4;
+}
+
+.dashboard-content {
+  @apply max-w-4xl w-full bg-white p-8 rounded-lg shadow-lg;
+}
+
+.dashboard-title {
+  @apply text-3xl font-bold mb-6 text-center text-gray-800;
+}
+
+.section-title {
+  @apply text-2xl font-semibold mb-4 text-center text-gray-700;
+}
+
+.button {
+  @apply px-6 py-3 rounded-full font-semibold transition duration-300 text-white;
+}
+
+.button-meal {
+  @apply bg-emerald-500 hover:bg-emerald-600;
+}
+
+.button-indulgence {
+  @apply bg-amber-500 hover:bg-amber-600;
+}
+
+.button-drink {
+  @apply bg-sky-500 hover:bg-sky-600;
+}
+
+.button-sweet {
+  @apply bg-rose-500 hover:bg-rose-600;
+}
+
+.button-signout {
+  @apply bg-gray-500 hover:bg-gray-600;
 }
